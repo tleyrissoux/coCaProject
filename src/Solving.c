@@ -59,7 +59,6 @@ Z3_ast graphsToPathFormula(Z3_context ctx, Graph *graphs,unsigned int numGraphs,
   
 
 Z3_ast simplePathFormula(Z3_context ctx, Graph *graphs, unsigned int numGraphs, int pathLength){
-  printf("bonjour");
   int max = maximumOrder(graphs,numGraphs);
   int i,q,j,l;
   Z3_ast chemin_simple;
@@ -69,36 +68,26 @@ Z3_ast simplePathFormula(Z3_context ctx, Graph *graphs, unsigned int numGraphs, 
   Z3_ast chemin_simple_clause1[numGraphs][max][pathLength+1][pathLength+1];
   Z3_ast chemin_simple_tab_or[numGraphs][max][pathLength+1][2];
   Z3_ast chemin_simple_or[numGraphs][max][pathLength+1];
-  printf("salut");
   for(i=0;i<numGraphs;i++)
     {
       for(q=0;q<orderG(graphs[i]);q++)
 	{
 	  for(j=0;j<=pathLength;j++)
 	    {
-	      if(j==0){
-		printf("dans le j");}
 	      chemin_simple_tab_or[i][q][j][1] =Z3_mk_not(ctx,getNodeVariable(ctx,i,j,pathLength,q));
 	      chemin_simple_clause1[i][q][j][j] =getNodeVariable(ctx,i,j,pathLength,q);
 	      for(l=0;l<=pathLength;l++)
 	        {
-		  if(l==0){
-		    printf("dans le l");}
 		  if(l!=j)
 		    chemin_simple_clause1[i][q][j][l] = Z3_mk_not(ctx,getNodeVariable(ctx,i,l,pathLength,q));
 	        }
 	      chemin_simple_tab_or[i][q][j][0]=Z3_mk_and(ctx,pathLength,chemin_simple_clause1[i][q][j]);
 	      chemin_simple_or[i][q][j] = Z3_mk_or(ctx,2,chemin_simple_tab_or[i][q][j]);
-	    }
-	  if(q ==0)
-	    printf("dans le q");
-	  chemin_simple_sommets[i][q]=Z3_mk_and(ctx,pathLength,chemin_simple_or[i][q]);
+	    }	  chemin_simple_sommets[i][q]=Z3_mk_and(ctx,pathLength,chemin_simple_or[i][q]);
 	}
-      if(i==0)
-	printf("dans le i");
       chemin_simple_graphes[i] = Z3_mk_and(ctx,pathLength,chemin_simple_sommets[i]);
     }
-  chemin_simple = Z3_mk_and(ctx,pathLength,chemin_simple_graphes);
+  chemin_simple = Z3_mk_and(ctx,numGraphs,chemin_simple_graphes);
   return chemin_simple;
 }
 
