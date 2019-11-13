@@ -29,8 +29,6 @@
  */
 Z3_ast getNodeVariable(Z3_context ctx, int number, int position, int k, int node);
 
-
-Z3_ast simplePathFormula(Z3_context ctx, Graph *graphs, unsigned int numGraphs, int pathLength);
 /**
  * @brief Generates a SAT formula satisfiable if and only if all graphs of @p graphs contain an accepting path of length @p pathLength.
  * 

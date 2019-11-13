@@ -6,12 +6,13 @@
 
 int main(int argc, char* argv[]){
   Z3_context ctx = makeContext();
-  Graph graphs[2];
-  graphs[0] = getGraphFromFile(argv[1]);
-  graphs[1] = getGraphFromFile(argv[2]);
-  printGraph(graphs[0]);
-  printGraph(graphs[1]);
-  Z3_ast formule = simplePathFormula(ctx,graphs,2,3);
+  Graph graphs[argc-1];
+  for(int i=1;i<argc;i++){
+    printf("%d",argc);
+    printf("'%s'\n",argv[i]);
+    graphs[i-1] = getGraphFromFile(argv[i]);
+  }
+  Z3_ast formule = graphsToPathFormula(ctx,graphs,argc-1,3);
   Z3_lbool isSat = isFormulaSat(ctx,formule);
   switch (isSat)
    {

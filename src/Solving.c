@@ -1,5 +1,10 @@
 #include "Solving.h"
 #include <stdio.h>
+Z3_ast validPathFormula(Z3_context ctx, Graph *graphs, unsigned int numGraphs, int pathLength);
+Z3_ast simplePathFormula(Z3_context ctx, Graph *graphs, unsigned int numGraphs, int pathLength);
+Z3_ast pathLengthFormula(Z3_context ctx, Graph *graphs, unsigned int numGraphs, int pathLength);
+int maximumOrder(Graph *graphs,unsigned int numGraphs);
+int minimumOrder(Graph *graphs,unsigned int numGraphs);
 
 Z3_ast getNodeVariable(Z3_context ctx, int number, int position, int k, int node)
 {
@@ -28,6 +33,15 @@ int maximumOrder(Graph *graphs,unsigned int numGraphs){
   return max;
 }
 
+int minimumOrder(Graph *graphs,unsigned int numGraphs){
+  int i,min;
+  min=orderG(graphs[0]);
+  for(i=0;i<numGraphs;i++){
+    if(orderG(graphs[i])<min)
+       min = orderG(graphs[i]);
+  }
+  return min;
+}
 
 /**
  * @brief Generates a SAT formula satisfiable if and only if all graphs of @p graphs contain an accepting path of length @p pathLength.
@@ -40,23 +54,47 @@ int maximumOrder(Graph *graphs,unsigned int numGraphs){
  */
 Z3_ast graphsToPathFormula(Z3_context ctx, Graph *graphs,unsigned int numGraphs, int pathLength)
 {
-  printf("je suis la");
-  /*int i,q,j,l,source,target=0;
-  Z3_ast chemin_valide[numGraphs];
-  Z3_ast source_target[numGraphs][2];
-  Z3_ast chemin_simple;
   
-  for(i=0;i<numGraphs;i++)
-    {
-      for(source=0;source<orderG(graphs[i]) && !isSource(graphs[i],source);source++);
-      source_target[i][0]= getNodeVariable(ctx,i,0,pathLength,source);
-      for(target=0;target<orderG(graphs[i]) && !isTarget(graphs[i],target);target++);
-      source_target[i][1] = getNodeVariable(ctx,i,pathLength,pathLength,target);
-      chemin_valide[i] = Z3_mk_and(ctx,2,source_target[i]);
-      }*/
-  return simplePathFormula(ctx,graphs,numGraphs,pathLength);
+  Z3_ast formules[3];
+  Z3_ast res;
+  if(pathLength>minimumOrder(graphs,numGraphs))
+     return Z3_mk_false(ctx);
+  formules[0] = validPathFormula(ctx, graphs, numGraphs, pathLength);
+  printf(Z3_ast_to_string(ctx,formules[0]));
+  printf("\n");
+  formules[1] = simplePathFormula(ctx, graphs, numGraphs, pathLength);
+  printf(Z3_ast_to_string(ctx,formules[1]));
+  printf("\n");
+  formules[2] = pathLengthFormula(ctx, graphs, numGraphs, pathLength);
+  printf(Z3_ast_to_string(ctx,formules[2]));
+  printf("\n");
+  res = Z3_mk_and(ctx, 3, formules);
+  return res;
 }
   
+
+Z3_ast validPathFormula(Z3_context ctx, Graph *graphs, unsigned int numGraphs, int pathLength)
+{
+  int order;
+  Z3_ast tab_i [numGraphs];
+  Z3_ast tab_q [2];
+  Z3_ast res;
+  int node;
+  for (int i = 0; i < numGraphs; i++) {
+    order = orderG(graphs[i]);
+    tab_q[0] = Z3_mk_false(ctx);
+    tab_q[1] = Z3_mk_false(ctx);
+    for (int q = 0; q < order; q++) {
+      if (isSource(graphs[i], q))
+	tab_q[0] = getNodeVariable(ctx, i, 0, pathLength, q);
+      if (isTarget(graphs[i], q))
+	tab_q[1] = getNodeVariable(ctx, i, pathLength, pathLength, q);
+    }
+    tab_i[i] = Z3_mk_and(ctx, 2, tab_q);
+  }
+  res = Z3_mk_and(ctx, numGraphs, tab_i);
+  return res;
+}
 
 Z3_ast simplePathFormula(Z3_context ctx, Graph *graphs, unsigned int numGraphs, int pathLength){
   int max = maximumOrder(graphs,numGraphs);
@@ -90,4 +128,32 @@ Z3_ast simplePathFormula(Z3_context ctx, Graph *graphs, unsigned int numGraphs, 
   chemin_simple = Z3_mk_and(ctx,numGraphs,chemin_simple_graphes);
   return chemin_simple;
 }
+
+
+Z3_ast pathLengthFormula(Z3_context ctx, Graph *graphs, unsigned int numGraphs, int pathLength)
+{
+  int order = maximumOrder(graphs,numGraphs);
+  Z3_ast tab_i [numGraphs];
+  Z3_ast tab_j [pathLength+1];
+  Z3_ast tab_q[order];
+  Z3_ast tab_p[order];
+  Z3_ast res;
+  for (int i = 0; i < numGraphs; i++) {
+    for (int j = 0; j <= pathLength; j++) {
+      for (int q = 0; q < order; q++) {
+	for (int p = 0; p < order; p++) {
+	  if(p!=q)
+	    tab_p[p] = Z3_mk_not(ctx, getNodeVariable(ctx, i, j, pathLength, p));
+	}
+	tab_p[q] = getNodeVariable(ctx, i, j, pathLength, q);
+	tab_q[q] = Z3_mk_and(ctx, order, tab_p);
+      }
+      tab_j[j] = Z3_mk_or(ctx, order, tab_q);
+    }
+    tab_i[i] = Z3_mk_and(ctx, pathLength+1, tab_j);
+  }
+  res = Z3_mk_and(ctx, numGraphs, tab_i);
+  return res;
+}
+
 
