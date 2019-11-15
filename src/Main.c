@@ -11,7 +11,8 @@ int main(int argc, char* argv[]){
     graphs[i-1] = getGraphFromFile(argv[i]);
     printGraph(graphs[i-1]);
   }
-  Z3_ast formule = graphsToPathFormula(ctx,graphs,argc-1,1);
+  int pathlength = 3;
+  Z3_ast formule = graphsToPathFormula(ctx,graphs,argc-1,pathlength);
   printf(Z3_ast_to_string(ctx,formule));
   printf("\n\n");
   Z3_lbool isSat = isFormulaSat(ctx,formule);
@@ -27,8 +28,7 @@ int main(int argc, char* argv[]){
      
    case Z3_L_TRUE:
      Z3_model z = getModelFromSatFormula(ctx,formule);
-     
-     printf(Z3_model_to_string(ctx,z));
+     printPathsFromModel(ctx,z,graphs,argc-1,pathlength);
      break;
      }
 }
