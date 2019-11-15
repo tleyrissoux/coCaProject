@@ -11,7 +11,7 @@ int main(int argc, char* argv[]){
     graphs[i-1] = getGraphFromFile(argv[i]);
     printGraph(graphs[i-1]);
   }
-  Z3_ast formule = graphsToPathFormula(ctx,graphs,argc-1,2);
+  Z3_ast formule = graphsToPathFormula(ctx,graphs,argc-1,1);
   printf(Z3_ast_to_string(ctx,formule));
   printf("\n\n");
   Z3_lbool isSat = isFormulaSat(ctx,formule);

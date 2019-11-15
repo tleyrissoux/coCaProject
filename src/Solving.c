@@ -134,7 +134,7 @@ Z3_ast pathLengthFormula(Z3_context ctx, Graph *graphs, unsigned int numGraphs, 
   Z3_ast res;
   for (int i = 0; i < numGraphs; i++) {
     order = orderG(graphs[i]);
-    for (int j = 0; j <= pathLength; j++) {
+    for (int j = 0; j < pathLength; j++) {
       for (int q = 0; q < order; q++) {
 	for (int p = 0; p < order; p++) {
 	  if(p!=q)
@@ -162,16 +162,17 @@ Z3_ast edgeExistsFormula( Z3_context ctx, Graph *graphs,unsigned int numGraphs,i
   Z3_ast res;
   for (int i = 0; i < numGraphs; i++) {
     order = orderG(graphs[i]);
-    for (int j = 0; j <= pathLength; j++) {
-      currentPos = -1;
+    printf("\n ordre = %d\n",order);
+    for (int j = 0; j < pathLength; j++) {
+      currentPos = 0;
       for (int q = 0; q < order; q++) {
 	tab_q[q] = getNodeVariable(ctx,i,j,pathLength,q);
 	for (int p = 0; p < order; p++) {
 	    if(isEdge(graphs[i],q,p)){
-	      currentPos++;
 	      tab_p[p][0] = tab_q[q];
 	      tab_p[p][1] = getNodeVariable(ctx,i,j+1,pathLength,p);
 	      tab_and[currentPos] = Z3_mk_and(ctx,2,tab_p[p]);
+	      currentPos++;
 	    }
 	}
       }
