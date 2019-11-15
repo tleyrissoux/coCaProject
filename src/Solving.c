@@ -1,5 +1,7 @@
 #include "Solving.h"
 #include <stdio.h>
+#include <stdlib.h>
+#include "Z3Tools.h"
 Z3_ast validPathFormula(Z3_context ctx, Graph *graphs, unsigned int numGraphs, int pathLength);
 Z3_ast simplePathFormula(Z3_context ctx, Graph *graphs, unsigned int numGraphs, int pathLength);
 Z3_ast pathLengthFormula(Z3_context ctx, Graph *graphs, unsigned int numGraphs, int pathLength);
@@ -148,9 +150,6 @@ Z3_ast pathLengthFormula(Z3_context ctx, Graph *graphs, unsigned int numGraphs, 
     tab_i[i] = Z3_mk_and(ctx, pathLength+1, tab_j);
   }
   res = Z3_mk_and(ctx, numGraphs, tab_i);
-  printf("\n\n pathlength :\n");
-  printf(Z3_ast_to_string(ctx,res));
-  printf("\n\n");
   return res;
 }
 
@@ -165,7 +164,6 @@ Z3_ast edgeExistsFormula( Z3_context ctx, Graph *graphs,unsigned int numGraphs,i
   Z3_ast res;
   for (int i = 0; i < numGraphs; i++) {
     order = orderG(graphs[i]);
-    printf("\n ordre = %d\n",order);
     for (int j = 0; j < pathLength; j++) {
       currentPos = 0;
       for (int q = 0; q < order; q++) {
@@ -192,10 +190,23 @@ Z3_ast edgeExistsFormula( Z3_context ctx, Graph *graphs,unsigned int numGraphs,i
 Z3_ast graphsToFullFormula( Z3_context ctx, Graph *graphs,unsigned int numGraphs){
  
   Z3_ast formule_finale;
+  Z3_ast temp;
+  int boole = 0;
   int minOrder = minimumOrder(graphs,numGraphs);
   Z3_ast tab_formules[minOrder];
+  Z3_model z;
+  Z3_lbool b;
   for(int i=0;i<minOrder;i++){
     tab_formules[i] = graphsToPathFormula(ctx,graphs,numGraphs,i);
+    if(boole != 1){
+      b = isFormulaSat(ctx,tab_formules[i]);
+      if(b==Z3_L_TRUE){
+	printf("\n Chemin trouvé de taille %d :\n",i); 
+	z = getModelFromSatFormula(ctx,tab_formules[i]);
+	printPathsFromModel(ctx, z, graphs, numGraphs, i);
+	boole = 1;
+      }
+    }
   }
   formule_finale = Z3_mk_or(ctx,minOrder,tab_formules);
   return formule_finale;
@@ -207,7 +218,7 @@ void printPathsFromModel(Z3_context ctx, Z3_model model, Graph *graphs, int numG
   bool value = false;
   for (int i = 0; i < numGraph; i++) {
     order = orderG(graphs[i]);
-    printf("Chemin du graphe %d : \n", i+1);
+    printf("Chemin du graphe %d: \n", i+1);
     for (int j = 0; j <= pathLength; j++) {
       for (int q = 0; q < order; q++) {
 	value = valueOfVarInModel(ctx, model, getNodeVariable(ctx, i, j, pathLength, q));
