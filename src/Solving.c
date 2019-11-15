@@ -1,14 +1,16 @@
 #include "Solving.h"
 #include <stdio.h>
+#include <stdlib.h>
+
+#define VAR_MAX 16
+
 Z3_ast validPathFormula(Z3_context ctx, Graph *graphs, unsigned int numGraphs, int pathLength);
 Z3_ast simplePathFormula(Z3_context ctx, Graph *graphs, unsigned int numGraphs, int pathLength);
 Z3_ast pathLengthFormula(Z3_context ctx, Graph *graphs, unsigned int numGraphs, int pathLength);
-int maximumOrder(Graph *graphs,unsigned int numGraphs);
-int minimumOrder(Graph *graphs,unsigned int numGraphs);
+int maximumOrder(Graph *graphs, unsigned int numGraphs);
+int minimumOrder(Graph *graphs, unsigned int numGraphs);
 
-Z3_ast getNodeVariable(Z3_context ctx, int number, int position, int k, int node)
-{
-  /**
+/**
  * @brief Generates a formula consisting of a variable representing the fact that @p node of graph number @p number is at position @p position of an accepting path.
  * 
  * @param ctx The solver context.
@@ -18,10 +20,11 @@ Z3_ast getNodeVariable(Z3_context ctx, int number, int position, int k, int node
  * @param node The node identifier.
  * @return Z3_ast The formula.
  */
-
-  char variable[20];
-  sprintf(variable,"x_%d_%d_%d_%d", number, position, k, node);
-  return mk_bool_var(ctx,variable);
+Z3_ast getNodeVariable(Z3_context ctx, int number, int position, int k, int node)
+{
+  char variable[VAR_MAX];
+  sprintf(variable,"x%d%d%d%d", number, position, k, node);
+  return mk_bool_var(ctx, variable);
 }
 
 int maximumOrder(Graph *graphs,unsigned int numGraphs){
@@ -54,7 +57,6 @@ int minimumOrder(Graph *graphs,unsigned int numGraphs){
  */
 Z3_ast graphsToPathFormula(Z3_context ctx, Graph *graphs,unsigned int numGraphs, int pathLength)
 {
-  
   Z3_ast formules[3];
   Z3_ast res;
   if(pathLength>minimumOrder(graphs,numGraphs))
@@ -70,8 +72,7 @@ Z3_ast graphsToPathFormula(Z3_context ctx, Graph *graphs,unsigned int numGraphs,
   printf("\n");
   res = Z3_mk_and(ctx, 3, formules);
   return res;
-}
-  
+} 
 
 Z3_ast validPathFormula(Z3_context ctx, Graph *graphs, unsigned int numGraphs, int pathLength)
 {
@@ -129,7 +130,6 @@ Z3_ast simplePathFormula(Z3_context ctx, Graph *graphs, unsigned int numGraphs, 
   return chemin_simple;
 }
 
-
 Z3_ast pathLengthFormula(Z3_context ctx, Graph *graphs, unsigned int numGraphs, int pathLength)
 {
   int order = maximumOrder(graphs,numGraphs);
@@ -139,6 +139,7 @@ Z3_ast pathLengthFormula(Z3_context ctx, Graph *graphs, unsigned int numGraphs, 
   Z3_ast tab_p[order];
   Z3_ast res;
   for (int i = 0; i < numGraphs; i++) {
+    order = orderG(graphs[i]);
     for (int j = 0; j <= pathLength; j++) {
       for (int q = 0; q < order; q++) {
 	for (int p = 0; p < order; p++) {
@@ -156,4 +157,23 @@ Z3_ast pathLengthFormula(Z3_context ctx, Graph *graphs, unsigned int numGraphs, 
   return res;
 }
 
-
+void printPathsFromModel(Z3_context ctx, Z3_model model, Graph *graphs, int numGraph, int pathLength)
+{
+  int order;
+  bool value = false;
+  for (int i = 0; i < numGraph; i++) {
+    order = orderG(graphs[i]);
+    printf("Chemin du graphe %d : \n", i+1);
+    for (int j = 0; j <= pathLength; j++) {
+      for (int q = 0; q < order; q++) {
+	value = valueOfVarInModel(ctx, model, getNodeVariable(ctx, i, j, pathLength, q));
+	if (value == true) {
+	  if (j != 0)
+	    printf("->");
+	  printf(getNodeName(graphs[i], q));
+	}
+      }
+    }
+    printf("\n");
+  }
+}
