@@ -3,6 +3,7 @@
 Z3_ast validPathFormula(Z3_context ctx, Graph *graphs, unsigned int numGraphs, int pathLength);
 Z3_ast simplePathFormula(Z3_context ctx, Graph *graphs, unsigned int numGraphs, int pathLength);
 Z3_ast pathLengthFormula(Z3_context ctx, Graph *graphs, unsigned int numGraphs, int pathLength);
+Z3_ast edgeExistsFormula( Z3_context ctx, Graph *graphs,unsigned int numGraphs,int pathLength);
 int maximumOrder(Graph *graphs,unsigned int numGraphs);
 int minimumOrder(Graph *graphs,unsigned int numGraphs);
 
@@ -55,20 +56,15 @@ int minimumOrder(Graph *graphs,unsigned int numGraphs){
 Z3_ast graphsToPathFormula(Z3_context ctx, Graph *graphs,unsigned int numGraphs, int pathLength)
 {
   
-  Z3_ast formules[3];
+  Z3_ast formules[4];
   Z3_ast res;
-  if(pathLength>minimumOrder(graphs,numGraphs))
+  if(pathLength>=minimumOrder(graphs,numGraphs))
      return Z3_mk_false(ctx);
   formules[0] = validPathFormula(ctx, graphs, numGraphs, pathLength);
-  printf(Z3_ast_to_string(ctx,formules[0]));
-  printf("\n");
   formules[1] = simplePathFormula(ctx, graphs, numGraphs, pathLength);
-  printf(Z3_ast_to_string(ctx,formules[1]));
-  printf("\n");
   formules[2] = pathLengthFormula(ctx, graphs, numGraphs, pathLength);
-  printf(Z3_ast_to_string(ctx,formules[2]));
-  printf("\n");
-  res = Z3_mk_and(ctx, 3, formules);
+  formules[3] = edgeExistsFormula(ctx, graphs, numGraphs, pathLength);
+  res = Z3_mk_and(ctx, 4, formules);
   return res;
 }
   
@@ -101,34 +97,32 @@ Z3_ast simplePathFormula(Z3_context ctx, Graph *graphs, unsigned int numGraphs, 
   int i,q,j,l;
   Z3_ast chemin_simple;
   Z3_ast chemin_simple_graphes[numGraphs];
-  Z3_ast chemin_simple_sommets[numGraphs][max];
-  Z3_ast chemin_simple_and[numGraphs][max][pathLength+1];
-  Z3_ast chemin_simple_clause1[numGraphs][max][pathLength+1][pathLength+1];
-  Z3_ast chemin_simple_tab_or[numGraphs][max][pathLength+1][2];
-  Z3_ast chemin_simple_or[numGraphs][max][pathLength+1];
+  Z3_ast chemin_simple_sommets[max];
+  Z3_ast chemin_simple_l[pathLength+1][pathLength+1];
+  Z3_ast chemin_simple_j[pathLength+1][2];
+  Z3_ast chemin_simple_or[pathLength+1];
   for(i=0;i<numGraphs;i++)
     {
       for(q=0;q<orderG(graphs[i]);q++)
 	{
 	  for(j=0;j<=pathLength;j++)
 	    {
-	      chemin_simple_tab_or[i][q][j][1] =Z3_mk_not(ctx,getNodeVariable(ctx,i,j,pathLength,q));
-	      chemin_simple_clause1[i][q][j][j] =getNodeVariable(ctx,i,j,pathLength,q);
+	      chemin_simple_j[j][1] =Z3_mk_not(ctx,getNodeVariable(ctx,i,j,pathLength,q));
 	      for(l=0;l<=pathLength;l++)
 	        {
-		  if(l!=j)
-		    chemin_simple_clause1[i][q][j][l] = Z3_mk_not(ctx,getNodeVariable(ctx,i,l,pathLength,q));
+		    chemin_simple_l[j][l] = Z3_mk_not(ctx,getNodeVariable(ctx,i,l,pathLength,q));
 	        }
-	      chemin_simple_tab_or[i][q][j][0]=Z3_mk_and(ctx,pathLength,chemin_simple_clause1[i][q][j]);
-	      chemin_simple_or[i][q][j] = Z3_mk_or(ctx,2,chemin_simple_tab_or[i][q][j]);
-	    }	  chemin_simple_sommets[i][q]=Z3_mk_and(ctx,pathLength,chemin_simple_or[i][q]);
+	      chemin_simple_l[j][j] = getNodeVariable(ctx,i,j,pathLength,q);
+	      chemin_simple_j[j][0]=Z3_mk_and(ctx,pathLength,chemin_simple_l[j]);
+	      chemin_simple_or[j] = Z3_mk_or(ctx,2,chemin_simple_j[j]);
+	    }
+	  chemin_simple_sommets[q]=Z3_mk_and(ctx,pathLength,chemin_simple_or);
 	}
-      chemin_simple_graphes[i] = Z3_mk_and(ctx,pathLength,chemin_simple_sommets[i]);
+      chemin_simple_graphes[i] = Z3_mk_and(ctx,orderG(graphs[i]),chemin_simple_sommets);
     }
   chemin_simple = Z3_mk_and(ctx,numGraphs,chemin_simple_graphes);
   return chemin_simple;
 }
-
 
 Z3_ast pathLengthFormula(Z3_context ctx, Graph *graphs, unsigned int numGraphs, int pathLength)
 {
@@ -139,6 +133,7 @@ Z3_ast pathLengthFormula(Z3_context ctx, Graph *graphs, unsigned int numGraphs, 
   Z3_ast tab_p[order];
   Z3_ast res;
   for (int i = 0; i < numGraphs; i++) {
+    order = orderG(graphs[i]);
     for (int j = 0; j <= pathLength; j++) {
       for (int q = 0; q < order; q++) {
 	for (int p = 0; p < order; p++) {
@@ -150,10 +145,57 @@ Z3_ast pathLengthFormula(Z3_context ctx, Graph *graphs, unsigned int numGraphs, 
       }
       tab_j[j] = Z3_mk_or(ctx, order, tab_q);
     }
-    tab_i[i] = Z3_mk_and(ctx, pathLength+1, tab_j);
+    tab_i[i] = Z3_mk_and(ctx, pathLength, tab_j);
   }
   res = Z3_mk_and(ctx, numGraphs, tab_i);
   return res;
 }
 
+Z3_ast edgeExistsFormula( Z3_context ctx, Graph *graphs,unsigned int numGraphs,int pathLength){
+  int order = maximumOrder(graphs, numGraphs);
+  int currentPos = 0;				      
+  Z3_ast tab_i [numGraphs];
+  Z3_ast tab_j [pathLength];
+  Z3_ast tab_q[order];
+  Z3_ast tab_p[order][2];
+  Z3_ast tab_and[order*order];
+  Z3_ast res;
+  for (int i = 0; i < numGraphs; i++) {
+    order = orderG(graphs[i]);
+    for (int j = 0; j <= pathLength; j++) {
+      currentPos = -1;
+      for (int q = 0; q < order; q++) {
+	tab_q[q] = getNodeVariable(ctx,i,j,pathLength,q);
+	for (int p = 0; p < order; p++) {
+	    if(isEdge(graphs[i],q,p)){
+	      currentPos++;
+	      tab_p[p][0] = tab_q[q];
+	      tab_p[p][1] = getNodeVariable(ctx,i,j+1,pathLength,p);
+	      tab_and[currentPos] = Z3_mk_and(ctx,2,tab_p[p]);
+	    }
+	}
+      }
+      tab_j[j] = Z3_mk_or(ctx,currentPos,tab_and);
+    }
+    tab_i[i] = Z3_mk_and(ctx,pathLength,tab_j);
+  }
+  res = Z3_mk_and(ctx,numGraphs,tab_i);
+  printf("\n\n");
+  printf(Z3_ast_to_string(ctx,res));
+  printf("\n\n");
+  return res;
+}
 
+
+
+Z3_ast graphsToFullFormula( Z3_context ctx, Graph *graphs,unsigned int numGraphs){
+ 
+  Z3_ast formule_finale;
+  int minOrder = minimumOrder(graphs,numGraphs);
+  Z3_ast tab_formules[minOrder];
+  for(int i=0;i<minOrder;i++){
+    tab_formules[i] = graphsToPathFormula(ctx,graphs,numGraphs,i);
+  }
+  formule_finale = Z3_mk_or(ctx,minOrder,tab_formules);
+  return formule_finale;
+}

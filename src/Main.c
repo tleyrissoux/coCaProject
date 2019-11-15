@@ -8,11 +8,12 @@ int main(int argc, char* argv[]){
   Z3_context ctx = makeContext();
   Graph graphs[argc-1];
   for(int i=1;i<argc;i++){
-    printf("%d",argc);
-    printf("'%s'\n",argv[i]);
     graphs[i-1] = getGraphFromFile(argv[i]);
+    printGraph(graphs[i-1]);
   }
-  Z3_ast formule = graphsToPathFormula(ctx,graphs,argc-1,3);
+  Z3_ast formule = graphsToPathFormula(ctx,graphs,argc-1,2);
+  printf(Z3_ast_to_string(ctx,formule));
+  printf("\n\n");
   Z3_lbool isSat = isFormulaSat(ctx,formule);
   switch (isSat)
    {
@@ -25,7 +26,9 @@ int main(int argc, char* argv[]){
      break;
      
    case Z3_L_TRUE:
-     printf("Satisfiable\n");
+     Z3_model z = getModelFromSatFormula(ctx,formule);
+     
+     printf(Z3_model_to_string(ctx,z));
      break;
      }
 }
